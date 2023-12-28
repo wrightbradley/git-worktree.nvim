@@ -1,4 +1,4 @@
-local git_harness = require('util.git_harness')
+local git_harness = require('git-worktree.test.git_util')
 local gwt_git = require('git-worktree.git')
 local Status = require('git-worktree.status')
 

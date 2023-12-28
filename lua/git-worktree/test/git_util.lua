@@ -1,4 +1,4 @@
-local system = require('util.system')
+local system = require('git-worktree.test.system_util')
 
 local M = {}
 
@@ -11,7 +11,7 @@ function M.setup_origin_repo()
 
     local workspace_dir = system.create_temp_dir('workspace-dir')
     vim.api.nvim_set_current_dir(vim.fn.getcwd())
-    system.run('cp -r spec/.repo ' .. workspace_dir)
+    system.run('cp -r test/fixtures/.repo ' .. workspace_dir)
     vim.api.nvim_set_current_dir(workspace_dir)
     system.run([[
         mv .repo/.git-orig ./.git

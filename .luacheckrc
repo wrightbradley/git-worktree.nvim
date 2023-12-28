@@ -1,10 +1,9 @@
-self = false
-
-ignore = {
-}
-read_globals = {
-    "vim",
-    "describe",
-    "it",
-    "assert"
+globals = {
+    'vim',
+    'describe',
+    'it',
+    'before_each',
+    'after_each',
+    'assert',
+    'async',
 }

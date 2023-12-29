@@ -15,7 +15,6 @@ local M = {}
 function M.has_worktree(path_str, cb)
     local found = false
     local path = Path:new(path_str)
-    local git_worktree_root = M.gitroot_dir()
 
     if path_str == '.' then
         path_str = vim.loop.cwd()
@@ -38,8 +37,7 @@ function M.has_worktree(path_str, cb)
             if path:is_absolute() then
                 start = data == path_str
             else
-                local worktree_path =
-                    Path:new(string.format('%s' .. Path.path.sep .. '%s', git_worktree_root, path_str))
+                local worktree_path = Path:new(string.format('%s' .. Path.path.sep .. '%s', vim.loop.cwd(), path_str))
                 worktree_path = worktree_path:absolute()
                 start = data == worktree_path
             end

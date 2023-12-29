@@ -8,12 +8,6 @@ local create_worktree = function(folder_path, commitish)
     system.run('git worktree add ' .. folder_path .. ' ' .. commitish)
 end
 
-local project_dir = vim.api.nvim_exec('pwd', true)
-local reset_cwd = function()
-    vim.cmd('cd ' .. project_dir)
-    vim.api.nvim_set_current_dir(project_dir)
-end
-
 local M = {}
 
 local origin_repo_path = nil
@@ -44,14 +38,16 @@ function M.prepare_repo()
     M.setup_origin_repo()
 
     local working_dir = system.create_temp_dir('working-dir')
+    local master_dir = working_dir .. '/master'
     vim.api.nvim_set_current_dir(working_dir)
-    system.run(string.format('git clone %s %s', origin_repo_path, working_dir))
+    system.run(string.format('git clone %s %s', origin_repo_path, master_dir))
+    vim.api.nvim_set_current_dir(master_dir)
     system.run([[
         git config remote.origin.url git@github.com:test/test.git
         git config user.email "test@test.test"
         git config user.name "Test User"
     ]])
-    return working_dir
+    return working_dir, master_dir
 end
 
 function M.prepare_repo_bare()
@@ -63,18 +59,41 @@ function M.prepare_repo_bare()
     return working_dir
 end
 
-function M.prepare_repo_worktree()
-    reset_cwd()
-    M.setup_origin_repo()
+--- @param num_worktrees integer
+function M.prepare_repo_bare_worktree(num_worktrees)
+    local working_dir = M.prepare_repo_bare()
+    local master_dir = working_dir .. '/master'
 
-    local working_dir = system.create_temp_dir('working-worktree-dir')
-    vim.api.nvim_set_current_dir(working_dir)
-    system.run(string.format('git clone --bare %s %s', origin_repo_path, working_dir))
-    create_worktree('master', 'master')
-    create_worktree('featB', 'featB')
-    local worktree_dir = working_dir .. '/master'
-    vim.api.nvim_set_current_dir(worktree_dir)
-    return working_dir, worktree_dir
+    if num_worktrees > 0 then
+        create_worktree('master', 'master')
+    end
+
+    if num_worktrees > 1 then
+        create_worktree('featB', 'featB')
+    end
+
+    if num_worktrees > 2 then
+        create_worktree('featC', 'featC')
+    end
+
+    vim.api.nvim_set_current_dir(master_dir)
+
+    return working_dir, master_dir
+end
+
+--- @param num_worktrees integer
+function M.prepare_repo_normal_worktree(num_worktrees)
+    local working_dir, master_dir = M.prepare_repo()
+
+    if num_worktrees > 0 then
+        create_worktree('../featB', 'featB')
+    end
+
+    if num_worktrees > 1 then
+        create_worktree('../featC', 'featC')
+    end
+
+    return working_dir, master_dir
 end
 
 return M

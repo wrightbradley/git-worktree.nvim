@@ -15,11 +15,11 @@ local status = Status:new()
 
 local cwd = vim.fn.getcwd()
 
--- luacheck: globals repo_dir worktree_dir
+-- luacheck: globals working_dir master_dir
 describe('git-worktree git operations', function()
     describe('in normal repo', function()
         before_each(function()
-            repo_dir = git_harness.prepare_repo()
+            working_dir, master_dir = git_harness.prepare_repo()
             status:reset(0)
         end)
         after_each(function()
@@ -27,18 +27,18 @@ describe('git-worktree git operations', function()
         end)
         it('finds toplevel.', function()
             local ret = gwt_git.toplevel_dir()
-            assert.are.same(ret, repo_dir)
+            assert.are.same(ret, master_dir)
         end)
         it('finds root git dir.', function()
             local ret = gwt_git.gitroot_dir()
-            local root_repo_dir = repo_dir .. '/.git'
+            local root_repo_dir = master_dir .. '/.git'
             assert.are.same(ret, root_repo_dir)
         end)
         it('has_worktree valid absolute.', function()
             local completed = false
             local ret = false
 
-            gwt_git.has_worktree(repo_dir, function(found)
+            gwt_git.has_worktree(master_dir, function(found)
                 completed = true
                 ret = found
             end)
@@ -53,7 +53,7 @@ describe('git-worktree git operations', function()
             local completed = false
             local ret = false
 
-            gwt_git.has_worktree('..', function(found)
+            gwt_git.has_worktree('.', function(found)
                 completed = true
                 ret = found
             end)
@@ -98,7 +98,7 @@ describe('git-worktree git operations', function()
 
     describe('in bare repo', function()
         before_each(function()
-            repo_dir = git_harness.prepare_repo_bare()
+            working_dir = git_harness.prepare_repo_bare()
             status:reset(0)
         end)
         after_each(function()
@@ -110,13 +110,13 @@ describe('git-worktree git operations', function()
         end)
         it('finds root git dir.', function()
             local ret_git_dir = gwt_git.gitroot_dir()
-            assert.are.same(ret_git_dir, repo_dir)
+            assert.are.same(ret_git_dir, working_dir)
         end)
         it('has_worktree valid absolute.', function()
             local completed = false
             local ret = false
 
-            gwt_git.has_worktree(repo_dir, function(found)
+            gwt_git.has_worktree(working_dir, function(found)
                 completed = true
                 ret = found
             end)
@@ -176,7 +176,7 @@ describe('git-worktree git operations', function()
 
     describe('in worktree repo', function()
         before_each(function()
-            repo_dir, worktree_dir = git_harness.prepare_repo_worktree()
+            working_dir, master_dir = git_harness.prepare_repo_bare_worktree(1)
             status:reset(0)
         end)
         after_each(function()
@@ -184,11 +184,11 @@ describe('git-worktree git operations', function()
         end)
         it('finds toplevel.', function()
             local ret = gwt_git.toplevel_dir()
-            assert.are.same(ret, worktree_dir)
+            assert.are.same(ret, master_dir)
         end)
         it('finds root git dir.', function()
             local ret = gwt_git.gitroot_dir()
-            assert.are.same(ret, repo_dir)
+            assert.are.same(ret, working_dir)
         end)
     end)
 end)

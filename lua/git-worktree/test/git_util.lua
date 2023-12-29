@@ -1,5 +1,19 @@
 local system = require('git-worktree.test.system_util')
 
+-- local change_dir = function(dir)
+--     vim.api.nvim_set_current_dir(dir)
+-- end
+
+local create_worktree = function(folder_path, commitish)
+    system.run('git worktree add ' .. folder_path .. ' ' .. commitish)
+end
+
+local project_dir = vim.api.nvim_exec('pwd', true)
+local reset_cwd = function()
+    vim.cmd('cd ' .. project_dir)
+    vim.api.nvim_set_current_dir(project_dir)
+end
+
 local M = {}
 
 local origin_repo_path = nil
@@ -50,13 +64,15 @@ function M.prepare_repo_bare()
 end
 
 function M.prepare_repo_worktree()
+    reset_cwd()
     M.setup_origin_repo()
 
     local working_dir = system.create_temp_dir('working-worktree-dir')
     vim.api.nvim_set_current_dir(working_dir)
     system.run(string.format('git clone --bare %s %s', origin_repo_path, working_dir))
-    system.run('git worktree add wt master')
-    local worktree_dir = working_dir .. '/wt'
+    create_worktree('master', 'master')
+    create_worktree('featB', 'featB')
+    local worktree_dir = working_dir .. '/master'
     vim.api.nvim_set_current_dir(worktree_dir)
     return working_dir, worktree_dir
 end

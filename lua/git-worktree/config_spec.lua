@@ -3,16 +3,16 @@ local stub = require('luassert.stub')
 describe('config', function()
     local notify_once = stub(vim, 'notify_once')
     local notify = stub(vim, 'notify')
+    local Config = require('git-worktree.config')
 
     it('returns the default config', function()
-        local Config = require('git-worktree.config')
-        assert.truthy(Config.options.change_directory_command)
+        local df = Config._get_defaults()
+        assert.truthy(df.change_directory_command)
     end)
 
     it('can have configuration applied', function()
-        local Config = require('git-worktree.config')
-        Config.setup { change_directory_command = 'test' }
-        assert.equals(Config.options.change_directory_command, 'test')
+        local cfg = Config.setup { change_directory_command = 'test' }
+        assert.equals(cfg.change_directory_command, 'test')
     end)
 
     it('No notifications at startup.', function()

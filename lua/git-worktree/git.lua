@@ -31,7 +31,6 @@ function M.has_worktree(path_str, cb)
             for section in data:gmatch('%S+') do
                 table.insert(list_data, section)
             end
-            print(vim.inspect(list_data))
 
             data = list_data[1]
 

@@ -1,63 +1,90 @@
--- local Job = require("plenary.job")
 local Path = require('plenary.path')
--- local Enum = require("git-worktree.enum")
 
 local Config = require('git-worktree.config')
 local Git = require('git-worktree.git')
--- local Hooks = require("git-worktree.hooks")
-local Status = require('git-worktree.status')
+local Hooks = require('git-worktree.hooks')
+local Log = require('git-worktree.logger')
 
-local status = Status:new()
--- local git_worktree_root = nil
--- local current_worktree_path = nil
--- local on_change_callbacks = {}
-
----@class GitWorktree
+--- @class GitWorktree
+--- @field config GitWorktreeConfig
+--- @field _hooks GitWorktreeHooks
 
 local M = {}
+M.__index = M
 
----@param opts? GitWorktree.Config
-function M.setup(opts)
-    require('git-worktree.config').setup(opts)
+function M:new()
+    local config = Config._get_defaults()
+    local obj = setmetatable({
+        config = config,
+        _hooks = Hooks.hooks,
+    }, self)
+    return obj
+end
+
+local current = M:new()
+
+---@param self GitWorktree
+--- @param opts table<string, any>
+function M.setup(self, opts)
+    if self ~= current then
+        self = current
+    end
+    self.config = Config.setup(opts)
+    return self
+end
+
+local function get_absolute_path(path)
+    if Path:new(path):is_absolute() then
+        return path
+    else
+        return Path:new(vim.loop.cwd(), path):absolute()
+    end
 end
 
 local function change_dirs(path)
-    local worktree_path = M.get_worktree_path(path)
-
-    local previous_worktree = Git.toplevel_dir()
+    Log.info('changing dirs:  %s ', path)
+    local worktree_path = get_absolute_path(path)
+    local previous_worktree = vim.loop.cwd()
 
     -- vim.loop.chdir(worktree_path)
     if Path:new(worktree_path):exists() then
-        local cmd = string.format('%s %s', Config.options.change_directory_command, worktree_path)
-        -- status:log().debug('Changing to directory ' .. worktree_path)
+        local cmd = string.format('%s %s', current.config.change_directory_command, worktree_path)
+        Log.debug('Changing to directory  %s', worktree_path)
         vim.cmd(cmd)
     else
-        status:error('Could not chang to directory: ' .. worktree_path)
+        Log.error('Could not chang to directory: %s', worktree_path)
     end
 
-    if M._config.clearjumps_on_change then
-        -- status:log().debug('Clearing jumps')
+    if current.config.clearjumps_on_change then
+        Log.debug('Clearing jumps')
         vim.cmd('clearjumps')
     end
 
     return previous_worktree
 end
 
+---@param hook GitWorkTreeHook
+function M:hooks(hook)
+    self._hooks:add_listener(hook)
+end
+
 --Switch the current worktree
 ---@param path string
-M.switch_worktree = function(path)
-    status:reset(2)
-    status:status(path)
-
+function M:switch_worktree(path)
+    -- status:reset(2)
+    -- status:status(path)
+    local cur_hooks = self._hooks
     Git.has_worktree(path, function(found)
         if not found then
-            status:error('worktree does not exists, please create it first ' .. path)
+            Log.error('worktree does not exists, please create it first %s ', path)
         end
 
         vim.schedule(function()
-            -- local prev_path = change_dirs(path)
-            change_dirs(path)
-            -- Hooks.emit_on_change(Enum.Operations.Switch, { path = path, prev_path = prev_path })
+            local prev_path = change_dirs(path)
+            -- change_dirs(path)
+            Log.info('emiting hooks')
+            print(vim.inspect(current._hooks))
+            cur_hooks:emit(Hooks.hook_event_names.SWITCH, path, prev_path)
         end)
     end)
 end
@@ -310,9 +337,6 @@ end
 --     return true
 -- end
 --
--- M.on_tree_change = function(cb)
---     table.insert(on_change_callbacks, cb)
--- end
 --
 -- M.reset = function()
 --     on_change_callbacks = {}
@@ -326,13 +350,6 @@ end
 --     return current_worktree_path
 -- end
 --
--- M.get_worktree_path = function(path)
---     if Path:new(path):is_absolute() then
---         return path
---     else
---         return Path:new(git_worktree_root, path):absolute()
---     end
--- end
 --
 -- M.setup = function(config)
 --     config = config or {}
@@ -351,4 +368,4 @@ end
 -- M.setup()
 -- --M.Operations = Enum.Operations
 
-return M
+return current

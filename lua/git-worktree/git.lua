@@ -1,12 +1,66 @@
 local Job = require('plenary').job
--- --local Path = require("plenary.path")
--- local Status = require("git-worktree.status")
+local Path = require('plenary.path')
+-- local Status = require('git-worktree.status')
 --
 -- local status = Status:new()
 --
 ---@class GitWorktreeGitOps
 local M = {}
---
+
+-- A lot of this could be cleaned up if there was better job -> job -> function
+-- communication.  That should be doable here in the near future
+---
+---@param path_str string path to the worktree to check. if relative, then path from the git root dir
+---@param cb any
+function M.has_worktree(path_str, cb)
+    local found = false
+    local path = Path:new(path_str)
+    local git_worktree_root = M.gitroot_dir()
+
+    if path_str == '.' then
+        path_str = vim.loop.cwd()
+        path = Path:new(path_str)
+    end
+
+    local job = Job:new {
+        'git',
+        'worktree',
+        'list',
+        on_stdout = function(_, data)
+            local list_data = {}
+            for section in data:gmatch('%S+') do
+                table.insert(list_data, section)
+            end
+            print(vim.inspect(list_data))
+
+            data = list_data[1]
+
+            local start
+            if path:is_absolute() then
+                start = data == path_str
+            else
+                local worktree_path =
+                    Path:new(string.format('%s' .. Path.path.sep .. '%s', git_worktree_root, path_str))
+                worktree_path = worktree_path:absolute()
+                start = data == worktree_path
+            end
+
+            -- TODO: This is clearly a hack (do not think we need this anymore?)
+            --local start_with_head = string.find(data, string.format('[heads/%s]', path), 1, true)
+            found = found or start
+        end,
+        cwd = vim.loop.cwd(),
+    }
+
+    job:after(function()
+        cb(found)
+    end)
+
+    -- TODO: I really don't want status's spread everywhere... seems bad
+    --status:next_status('Checking for worktree ' .. path)
+    job:start()
+end
+
 -- --- @return boolean
 -- function M.is_bare_repo()
 --     local inside_worktree_job = Job:new({
@@ -54,13 +108,42 @@ local M = {}
 --         return false
 --     end
 -- end
---
--- @param is_worktree boolean
+
 --- @return string|nil
-function M.find_git_dir()
+function M.gitroot_dir()
     local job = Job:new {
         'git',
         'rev-parse',
+        '--path-format=absolute',
+        '--git-common-dir',
+        cwd = vim.loop.cwd(),
+        -- on_stderr = function(_, data)
+        --     status:log().info('ERROR: ' .. data)
+        -- end,
+    }
+
+    local stdout, code = job:sync()
+    if code ~= 0 then
+        -- status:log().error(
+        --     'Error in determining the git root dir: code:'
+        --         .. tostring(code)
+        --         .. ' out: '
+        --         .. table.concat(stdout, '')
+        --         .. '.'
+        -- )
+        return nil
+    end
+
+    return table.concat(stdout, '')
+end
+
+-- @param is_worktree boolean
+--- @return string|nil
+function M.toplevel_dir()
+    local job = Job:new {
+        'git',
+        'rev-parse',
+        '--path-format=absolute',
         '--show-toplevel',
         cwd = vim.loop.cwd(),
         -- on_stderr = function(_, data)
@@ -80,44 +163,9 @@ function M.find_git_dir()
         return nil
     end
 
-    stdout = table.concat(stdout, '')
-    -- status:log().info('cwd: ' .. vim.loop.cwd())
-    -- status:log().info('git root dir: ' .. stdout)
-
-    -- if is_worktree then
-    --     -- if in worktree git dir returns absolute path
-    --
-    --     -- try to find the dot git folder (non-bare repo)
-    --     local git_dir = Path:new(stdout)
-    --     local has_dot_git = false
-    --     for _, dir in ipairs(git_dir:_split()) do
-    --         if dir == ".git" then
-    --             has_dot_git = true
-    --             break
-    --         end
-    --     end
-    --
-    --     if has_dot_git then
-    --         if stdout == ".git" then
-    --             return vim.loop.cwd()
-    --         else
-    --             local start = stdout:find("%.git")
-    --             return stdout:sub(1, start - 2)
-    --         end
-    --     else
-    --         local start = stdout:find("/worktrees/")
-    --         return stdout:sub(0, start - 1)
-    --     end
-    -- elseif stdout == "." then
-    --     -- we are in the root git dir
-    --     return vim.loop.cwd()
-    -- else
-    -- if not in worktree git dir should be absolute
-    return stdout
-    -- end
+    return table.concat(stdout, '')
 end
 
---
 -- --- @return string|nil
 -- function M.find_git_toplevel()
 --     local find_toplevel_job = Job:new({

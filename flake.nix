@@ -62,6 +62,7 @@
             name = "haskell-tools.nvim-shell";
             inherit (pre-commit-check) shellHook;
             buildInputs = with pkgs; [
+              luajitPackages.luacheck
               luajitPackages.vusted
               stylua
             ];

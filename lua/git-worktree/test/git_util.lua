@@ -58,7 +58,7 @@ function M.prepare_repo_worktree()
     system.run('git worktree add wt master')
     local worktree_dir = working_dir .. '/wt'
     vim.api.nvim_set_current_dir(worktree_dir)
-    return worktree_dir
+    return working_dir, worktree_dir
 end
 
 return M

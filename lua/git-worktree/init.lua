@@ -1,9 +1,9 @@
 -- local Job = require("plenary.job")
--- local Path = require("plenary.path")
+local Path = require('plenary.path')
 -- local Enum = require("git-worktree.enum")
 
--- local Config = require('git-worktree.config')
--- local Git = require("git-worktree.git")
+local Config = require('git-worktree.config')
+local Git = require('git-worktree.git')
 -- local Hooks = require("git-worktree.hooks")
 local Status = require('git-worktree.status')
 
@@ -13,7 +13,6 @@ local status = Status:new()
 -- local on_change_callbacks = {}
 
 ---@class GitWorktree
----@field config GitWorktreeConfig
 
 local M = {}
 
@@ -22,28 +21,46 @@ function M.setup(opts)
     require('git-worktree.config').setup(opts)
 end
 
--- local function change_dirs(path)
---     local worktree_path = M.get_worktree_path(path)
---
---     local previous_worktree = current_worktree_path
---
---     -- vim.loop.chdir(worktree_path)
---     if Path:new(worktree_path):exists() then
---         local cmd = string.format("%s %s", M._config.change_directory_command, worktree_path)
---         status:log().debug("Changing to directory " .. worktree_path)
---         vim.cmd(cmd)
---         current_worktree_path = worktree_path
---     else
---         status:error("Could not chang to directory: " .. worktree_path)
---     end
---
---     if M._config.clearjumps_on_change then
---         status:log().debug("Clearing jumps")
---         vim.cmd("clearjumps")
---     end
---
---     return previous_worktree
--- end
+local function change_dirs(path)
+    local worktree_path = M.get_worktree_path(path)
+
+    local previous_worktree = Git.toplevel_dir()
+
+    -- vim.loop.chdir(worktree_path)
+    if Path:new(worktree_path):exists() then
+        local cmd = string.format('%s %s', Config.options.change_directory_command, worktree_path)
+        -- status:log().debug('Changing to directory ' .. worktree_path)
+        vim.cmd(cmd)
+    else
+        status:error('Could not chang to directory: ' .. worktree_path)
+    end
+
+    if M._config.clearjumps_on_change then
+        -- status:log().debug('Clearing jumps')
+        vim.cmd('clearjumps')
+    end
+
+    return previous_worktree
+end
+
+--Switch the current worktree
+---@param path string
+M.switch_worktree = function(path)
+    status:reset(2)
+    status:status(path)
+
+    Git.has_worktree(path, function(found)
+        if not found then
+            status:error('worktree does not exists, please create it first ' .. path)
+        end
+
+        vim.schedule(function()
+            -- local prev_path = change_dirs(path)
+            change_dirs(path)
+            -- Hooks.emit_on_change(Enum.Operations.Switch, { path = path, prev_path = prev_path })
+        end)
+    end)
+end
 --
 -- local function create_worktree_job(path, branch, found_branch)
 --     local worktree_add_cmd = "git"
@@ -68,48 +85,6 @@ end
 --     })
 -- end
 --
--- -- A lot of this could be cleaned up if there was better job -> job -> function
--- -- communication.  That should be doable here in the near future
--- local function has_worktree(path, cb)
---     local found = false
---     local plenary_path = Path:new(path)
---
---     local job = Job:new({
---         "git",
---         "worktree",
---         "list",
---         on_stdout = function(_, data)
---             local list_data = {}
---             for section in data:gmatch("%S+") do
---                 table.insert(list_data, section)
---             end
---
---             data = list_data[1]
---
---             local start
---             if plenary_path:is_absolute() then
---                 start = data == path
---             else
---                 local worktree_path = Path:new(string.format("%s" .. Path.path.sep .. "%s", git_worktree_root, path))
---                 worktree_path = worktree_path:absolute()
---                 start = data == worktree_path
---             end
---
---             -- TODO: This is clearly a hack (do not think we need this anymore?)
---             local start_with_head = string.find(data, string.format("[heads/%s]", path), 1, true)
---             found = found or start or start_with_head
---         end,
---         cwd = git_worktree_root,
---     })
---
---     job:after(function()
---         cb(found)
---     end)
---
---     -- TODO: I really don't want status's spread everywhere... seems bad
---     status:next_status("Checking for worktree " .. path)
---     job:start()
--- end
 --
 -- local function failure(from, cmd, path, soft_error)
 --     return function(e)
@@ -247,23 +222,6 @@ end
 -- end
 --
 
---Switch the current worktree
----@param path string
-M.switch_worktree = function(path)
-    status:reset(2)
-    status:status(path)
-    --     M.setup_git_info()
-    --     has_worktree(path, function(found)
-    --         if not found then
-    --             status:error("worktree does not exists, please create it first " .. path)
-    --         end
-    --
-    --         vim.schedule(function()
-    --             local prev_path = change_dirs(path)
-    --             Hooks.emit_on_change(Enum.Operations.Switch, { path = path, prev_path = prev_path })
-    --         end)
-    --     end)
-end
 --
 -- M.delete_worktree = function(path, force, opts)
 --     if not opts then

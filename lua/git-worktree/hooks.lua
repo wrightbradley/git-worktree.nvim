@@ -42,6 +42,7 @@ local M = {}
 M.hooks = GitWorktreeHooks:new()
 
 M.hook_event_names = {
+    CREATE = 'CREATE',
     SWITCH = 'SWITCH',
 }
 

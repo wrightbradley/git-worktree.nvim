@@ -1,9 +1,7 @@
-local Job = require('plenary').job
+local Job = require('plenary.job')
 local Path = require('plenary.path')
--- local Status = require('git-worktree.status')
---
--- local status = Status:new()
---
+local Log = require('git-worktree.logger')
+
 ---@class GitWorktreeGitOps
 local M = {}
 
@@ -53,8 +51,7 @@ function M.has_worktree(path_str, cb)
         cb(found)
     end)
 
-    -- TODO: I really don't want status's spread everywhere... seems bad
-    --status:next_status('Checking for worktree ' .. path)
+    Log.debug('Checking for worktree %s', path)
     job:start()
 end
 
@@ -134,7 +131,6 @@ function M.gitroot_dir()
     return table.concat(stdout, '')
 end
 
--- @param is_worktree boolean
 --- @return string|nil
 function M.toplevel_dir()
     local job = Job:new {
@@ -163,44 +159,25 @@ function M.toplevel_dir()
     return table.concat(stdout, '')
 end
 
--- --- @return string|nil
--- function M.find_git_toplevel()
---     local find_toplevel_job = Job:new({
---         "git",
---         "rev-parse",
---         "--show-toplevel",
---         cwd = vim.loop.cwd(),
---     })
---     local stdout, code = find_toplevel_job:sync()
---     if code == 0 then
---         stdout = table.concat(stdout, "")
---         return stdout
---     else
---         return nil
---     end
--- end
---
--- function M.has_branch(branch, cb)
---     local found = false
---     local job = Job:new({
---         "git",
---         "branch",
---         on_stdout = function(_, data)
---             -- remove  markere on current branch
---             data = data:gsub("*", "")
---             data = vim.trim(data)
---             found = found or data == branch
---         end,
---         cwd = vim.loop.cwd(),
---     })
---
---     -- TODO: I really don't want status's spread everywhere... seems bad
---     status:next_status(string.format("Checking for branch %s", branch))
---     job:after(function()
---         status:status("found branch: " .. tostring(found))
---         cb(found)
---     end):start()
--- end
+function M.has_branch(branch, cb)
+    local found = false
+    local job = Job:new {
+        'git',
+        'branch',
+        on_stdout = function(_, data)
+            -- remove  markere on current branch
+            data = data:gsub('*', '')
+            data = vim.trim(data)
+            found = found or data == branch
+        end,
+        cwd = vim.loop.cwd(),
+    }
+
+    -- TODO: I really don't want status's spread everywhere... seems bad
+    job:after(function()
+        cb(found)
+    end):start()
+end
 --
 -- function M.has_origin()
 --     local found = false
@@ -222,5 +199,95 @@ end
 --
 --     return found
 -- end
---
+
+--- @param path string
+--- @param branch string
+--- @param found_branch boolean
+--- @return Job
+function M.create_worktree_job(path, branch, found_branch)
+    local worktree_add_cmd = 'git'
+    local worktree_add_args = { 'worktree', 'add' }
+
+    if not found_branch then
+        table.insert(worktree_add_args, '-b')
+        table.insert(worktree_add_args, branch)
+        table.insert(worktree_add_args, path)
+    else
+        table.insert(worktree_add_args, path)
+        table.insert(worktree_add_args, branch)
+    end
+
+    return Job:new {
+        command = worktree_add_cmd,
+        args = worktree_add_args,
+        cwd = vim.loop.cwd(),
+        on_start = function()
+            Log.debug(worktree_add_cmd .. ' ' .. table.concat(worktree_add_args, ' '))
+        end,
+    }
+end
+
+--- @param path string
+--- @return plenary:Job
+function M.fetchall_job(path)
+    return Job:new {
+        'git',
+        'fetch',
+        '--all',
+        cwd = path,
+        on_start = function()
+            Log.debug('git fetch --all (This may take a moment)')
+        end,
+    }
+end
+
+--- @param path string
+--- @param branch string
+--- @param upstream string
+--- @return plenary:Job
+function M.setbranch_job(path, branch, upstream)
+    local set_branch_cmd = 'git'
+    local set_branch_args = { 'branch', string.format('--set-upstream-to=%s/%s', upstream, branch) }
+    return Job:new {
+        command = set_branch_cmd,
+        args = set_branch_args,
+        cwd = path,
+        on_start = function()
+            Log.debug(set_branch_cmd .. ' ' .. table.concat(set_branch_args, ' '))
+        end,
+    }
+end
+
+--- @param path string
+--- @param branch string
+--- @param upstream string
+--- @return plenary:Job
+function M.setpush_job(path, branch, upstream)
+    -- TODO: How to configure origin???  Should upstream ever be the push
+    -- destination?
+    local set_push_cmd = 'git'
+    local set_push_args = { 'push', '--set-upstream', upstream, branch, path }
+    return Job:new {
+        command = set_push_cmd,
+        args = set_push_args,
+        cwd = path,
+        on_start = function()
+            Log.debug(set_push_cmd .. ' ' .. table.concat(set_push_args, ' '))
+        end,
+    }
+end
+
+--- @param path string
+--- @return plenary:Job
+function M.rebase_job(path)
+    return Job:new {
+        'git',
+        'rebase',
+        cwd = path,
+        on_start = function()
+            Log.debug('git rebase')
+        end,
+    }
+end
+
 return M

@@ -43,6 +43,7 @@ M.hooks = GitWorktreeHooks:new()
 
 M.hook_event_names = {
     CREATE = 'CREATE',
+    DELETE = 'DELETE',
     SWITCH = 'SWITCH',
 }
 

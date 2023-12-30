@@ -43,11 +43,13 @@ function M.has_worktree(path_str, cb)
             -- TODO: This is clearly a hack (do not think we need this anymore?)
             --local start_with_head = string.find(data, string.format('[heads/%s]', path), 1, true)
             found = found or start
+            Log.debug('found: %s', found)
         end,
         cwd = vim.loop.cwd(),
     }
 
     job:after(function()
+        Log.debug('calling after')
         cb(found)
     end)
 
@@ -223,6 +225,27 @@ function M.create_worktree_job(path, branch, found_branch)
         cwd = vim.loop.cwd(),
         on_start = function()
             Log.debug(worktree_add_cmd .. ' ' .. table.concat(worktree_add_args, ' '))
+        end,
+    }
+end
+
+--- @param path string
+--- @param force boolean
+--- @return Job
+function M.delete_worktree_job(path, force)
+    local worktree_del_cmd = 'git'
+    local worktree_del_args = { 'worktree', 'remove', path }
+
+    if force then
+        table.insert(worktree_del_args, '--force')
+    end
+
+    return Job:new {
+        command = worktree_del_cmd,
+        args = worktree_del_args,
+        cwd = vim.loop.cwd(),
+        on_start = function()
+            Log.debug(worktree_del_cmd .. ' ' .. table.concat(worktree_del_args, ' '))
         end,
     }
 end

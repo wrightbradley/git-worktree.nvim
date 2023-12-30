@@ -36,6 +36,25 @@ local function change_dirs(path)
     return previous_worktree
 end
 
+local function failure(from, cmd, path, soft_error)
+    return function(e)
+        local error_message = string.format(
+            '%s Failed: PATH %s CMD %s RES %s, ERR %s',
+            from,
+            path,
+            vim.inspect(cmd),
+            vim.inspect(e:result()),
+            vim.inspect(e:stderr_result())
+        )
+
+        if soft_error then
+            Log.error(error_message)
+        else
+            Log.error(error_message)
+        end
+    end
+end
+
 local M = {}
 
 --- SWITCH ---
@@ -60,25 +79,6 @@ function M.switch(path)
 end
 
 --- CREATE ---
-
-local function create_failure(from, cmd, path, soft_error)
-    return function(e)
-        local error_message = string.format(
-            '%s Failed: PATH %s CMD %s RES %s, ERR %s',
-            from,
-            path,
-            vim.inspect(cmd),
-            vim.inspect(e:result()),
-            vim.inspect(e:stderr_result())
-        )
-
-        if soft_error then
-            Log.error(error_message)
-        else
-            Log.error(error_message)
-        end
-    end
-end
 
 --crerate a worktree
 ---@param path string
@@ -127,15 +127,15 @@ function M.create(path, branch, upstream)
                     -- We have to figure out how we want to handle these...
                     set_branch:and_then(set_push)
                     set_push:and_then(rebase)
-                    set_push:after_failure(create_failure('create_worktree', set_branch.args, worktree_path, true))
+                    set_push:after_failure(failure('create_worktree', set_branch.args, worktree_path, true))
                 else
                     set_branch:and_then(rebase)
                 end
 
-                create_wt_job:after_failure(create_failure('create_worktree', create_wt_job.args, vim.loop.cwd()))
-                fetch:after_failure(create_failure('create_worktree', fetch.args, worktree_path))
+                create_wt_job:after_failure(failure('create_worktree', create_wt_job.args, vim.loop.cwd()))
+                fetch:after_failure(failure('create_worktree', fetch.args, worktree_path))
 
-                set_branch:after_failure(create_failure('create_worktree', set_branch.args, worktree_path, true))
+                set_branch:after_failure(failure('create_worktree', set_branch.args, worktree_path, true))
 
                 rebase:after(function()
                     if rebase.code ~= 0 then
@@ -159,4 +159,50 @@ function M.create(path, branch, upstream)
         end)
     end)
 end
+
+--- DELETE ---
+
+--Delete a worktree
+---@param path string
+---@param force boolean
+---@param opts any
+function M.delete(path, force, opts)
+    if not opts then
+        opts = {}
+    end
+
+    Git.has_worktree(path, function(found)
+        Log.info('OMG here')
+        if not found then
+            Log.error('Worktree %s does not exist', path)
+        else
+            Log.info('Worktree %s does exist', path)
+        end
+        local Gwt = require('git-worktree')
+        local cur_hooks = Gwt._hooks
+
+        local delete = Git.delete_worktree_job(path, force)
+        delete:after_success(vim.schedule_wrap(function()
+            Log.info('delete after success')
+            cur_hooks:emit(Hooks.hook_event_names.DELETE, path)
+            if opts.on_success then
+                opts.on_success()
+            end
+        end))
+
+        delete:after_failure(function(e)
+            Log.info('delete after failure')
+            -- callback has to be called before failure() because failure()
+            -- halts code execution
+            if opts.on_failure then
+                opts.on_failure(e)
+            end
+
+            failure(delete.cmd, vim.loop.cwd())(e)
+        end)
+        Log.info('delete start job')
+        delete:start()
+    end)
+end
+
 return M

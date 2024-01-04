@@ -57,54 +57,6 @@ function M.has_worktree(path_str, cb)
     job:start()
 end
 
--- --- @return boolean
--- function M.is_bare_repo()
---     local inside_worktree_job = Job:new({
---         "git",
---         "rev-parse",
---         "--is-bare-repository",
---         cwd = vim.loop.cwd(),
---     })
---
---     local stdout, code = inside_worktree_job:sync()
---     if code ~= 0 then
---         status:log().error("Error in determining if we are in a worktree")
---         return false
---     end
---
---     stdout = table.concat(stdout, "")
---
---     if stdout == "true" then
---         return true
---     else
---         return false
---     end
--- end
---
--- --- @return boolean
--- function M.is_worktree()
---     local inside_worktree_job = Job:new({
---         "git",
---         "rev-parse",
---         "--is-inside-work-tree",
---         cwd = vim.loop.cwd(),
---     })
---
---     local stdout, code = inside_worktree_job:sync()
---     if code ~= 0 then
---         status:log().error("Error in determining if we are in a worktree")
---         return false
---     end
---
---     stdout = table.concat(stdout, "")
---
---     if stdout == "true" then
---         return true
---     else
---         return false
---     end
--- end
-
 --- @return string|nil
 function M.gitroot_dir()
     local job = Job:new {
@@ -113,20 +65,20 @@ function M.gitroot_dir()
         '--path-format=absolute',
         '--git-common-dir',
         cwd = vim.loop.cwd(),
-        -- on_stderr = function(_, data)
-        --     status:log().info('ERROR: ' .. data)
-        -- end,
+        on_stderr = function(_, data)
+            Log.error('ERROR: ' .. data)
+        end,
     }
 
     local stdout, code = job:sync()
     if code ~= 0 then
-        -- status:log().error(
-        --     'Error in determining the git root dir: code:'
-        --         .. tostring(code)
-        --         .. ' out: '
-        --         .. table.concat(stdout, '')
-        --         .. '.'
-        -- )
+        Log.error(
+            'Error in determining the git root dir: code:'
+                .. tostring(code)
+                .. ' out: '
+                .. table.concat(stdout, '')
+                .. '.'
+        )
         return nil
     end
 
@@ -141,20 +93,20 @@ function M.toplevel_dir()
         '--path-format=absolute',
         '--show-toplevel',
         cwd = vim.loop.cwd(),
-        -- on_stderr = function(_, data)
-        --     status:log().info('ERROR: ' .. data)
-        -- end,
+        on_stderr = function(_, data)
+            Log.error('ERROR: ' .. data)
+        end,
     }
 
     local stdout, code = job:sync()
     if code ~= 0 then
-        -- status:log().error(
-        --     'Error in determining the git root dir: code:'
-        --         .. tostring(code)
-        --         .. ' out: '
-        --         .. table.concat(stdout, '')
-        --         .. '.'
-        -- )
+        Log.error(
+            'Error in determining the git root dir: code:'
+                .. tostring(code)
+                .. ' out: '
+                .. table.concat(stdout, '')
+                .. '.'
+        )
         return nil
     end
 
@@ -180,27 +132,6 @@ function M.has_branch(branch, cb)
         cb(found)
     end):start()
 end
---
--- function M.has_origin()
---     local found = false
---     local job = Job:new({
---         "git",
---         "remote",
---         "show",
---         on_stdout = function(_, data)
---             data = vim.trim(data)
---             found = found or data == "origin"
---         end,
---         cwd = vim.loop.cwd(),
---     })
---
---     -- TODO: I really don't want status's spread everywhere... seems bad
---     job:after(function()
---         status:status("found origin: " .. tostring(found))
---     end):sync()
---
---     return found
--- end
 
 --- @param path string
 --- @param branch string

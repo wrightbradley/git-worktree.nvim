@@ -9,6 +9,10 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
+    neovim = {
+      url = "github:neovim/neovim?dir=contrib";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
     neodev-nvim = {
       url = "github:folke/neodev.nvim";
       flake = false;
@@ -55,6 +59,9 @@
         _module.args.pkgs = import inputs.nixpkgs {
           inherit system;
           overlays = [
+            (final: _: {
+              neovim-nightly = inputs.neovim.packages.${final.system}.neovim;
+            })
           ];
         };
         devShells = {
@@ -80,12 +87,6 @@
         packages.telescope-plugin = pkgs.vimUtils.buildVimPlugin {
           name = "telescope.nvim";
           src = inputs.telescope-nvim;
-        };
-        packages.neorocks-test-stable = pkgs.callPackage ./nix/neorocks-test.nix {
-          name = "git-worktree-stable";
-          inherit self;
-          nvim = pkgs.neovim-unwrapped;
-          inherit (config.packages) plenary-plugin;
         };
 
         checks = {

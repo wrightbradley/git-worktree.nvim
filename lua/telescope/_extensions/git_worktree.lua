@@ -26,10 +26,10 @@ end
 local toggle_forced_deletion = function()
     -- redraw otherwise the message is not displayed when in insert mode
     if force_next_deletion then
-        print('The next deletion will not be forced')
+        -- print('The next deletion will not be forced')
         vim.fn.execute('redraw')
     else
-        print('The next deletion will be forced')
+        -- print('The next deletion will be forced')
         vim.fn.execute('redraw')
         force_next_deletion = true
     end
@@ -40,7 +40,7 @@ local delete_success_handler = function()
 end
 
 local delete_failure_handler = function()
-    print('Deletion failed, use <C-f> to force the next deletion')
+    -- print('Deletion failed, use <C-f> to force the next deletion')
 end
 
 local ask_to_confirm_deletion = function(forcing)
@@ -62,7 +62,7 @@ local confirm_deletion = function(forcing)
         return true
     end
 
-    print("Didn't delete worktree")
+    -- print("Didn't delete worktree")
     return false
 end
 

@@ -14,12 +14,13 @@
 - [git-worktree.nvim](#git-worktreenvim)
   - [TOC](#toc)
   - [About](#about)
+  - [Prerequisites](#prerequisites)
+    - [Optional](#optional)
   - [Installation](#installation)
-  - [Getting Started](#getting-started)
-    - [Basic Setup](#basic-setup)
+  - [Quick Setup](#quick-setup)
     - [Telescope Config](#telescope-config)
-    - [Config](#config)
-    - [Usage](#usage)
+  - [Usage](#usage)
+  - [Advanced Config](#advanced-config)
     - [Hooks](#hooks)
   - [Save](#save)
   - [Repository](#repository)
@@ -36,9 +37,16 @@ A simple wrapper around git worktree operations, create, switch, and delete.
 There is some assumed workflow within this plugin, but pull requests are
 welcomed to fix that).
 
+## Prerequisites<a name="prerequisites"></a>
+
+- `neovim >= 0.8`
+
+### Optional<a name="optional"></a>
+
+- install telescope.nvim for telescope extension
+
 ## Installation<a name="installation"></a>
 
-- neovim 0.8.0+ required
 - install using your favorite plugin manager
 - or install using [lazy.nvim](https://github.com/folke/lazy.nvim)
 
@@ -50,20 +58,20 @@ welcomed to fix that).
 }
 ```
 
-- Optional: install telescope.nvim for telescope extension
+> \[!NOTE\]
+>
+> It is suggested to pin to tagged releases if you would like to avoid breaking changes.
 
-## Getting Started<a name="getting-started"></a>
+## Quick Setup<a name="quick-setup"></a>
 
-### Basic Setup<a name="basic-setup"></a>
-
-```lua
+```
 local gwt = require("git-worktree")
-local Hooks = require("git-worktree.hooks")
 
 -- REQUIRED
 gwt:setup()
 -- REQUIRED
 
+local Hooks = require("git-worktree.hooks")
 -- you probably want al least this basic hook to change current buffer
 -- on worktree switch,  more on hook below
 gwt:hooks({
@@ -77,13 +85,30 @@ In order to use [Telescope](https://github.com/nvim-telescope/telescope.nvim) as
 make sure to add `telescope` to your dependencies and paste this following snippet into your configuration.
 
 ```lua
-local gwt = require('git-worktree')
-gwt:setup({})
-
 require('telescope').load_extension('git_worktree')
 ```
 
-### Config<a name="config"></a>
+## Usage<a name="usage"></a>
+
+Three primary functions should cover your day-to-day.
+
+The path can be either relative from the git root dir or absolute path to the worktree.
+
+```lua
+-- Creates a worktree.  Requires the path, branch name, and the upstream
+-- Example:
+:lua require("git-worktree").create_worktree("feat-69", "master", "origin")
+
+-- switches to an existing worktree.  Requires the path name
+-- Example:
+:lua require("git-worktree").switch_worktree("feat-69")
+
+-- deletes to an existing worktree.  Requires the path name
+-- Example:
+:lua require("git-worktree").delete_worktree("feat-69")
+```
+
+## Advanced Config<a name="advanced-config"></a>
 
 `change_directory_command`: The vim command used to change to the new worktree directory.
 Set this to `tcd` if you want to only change the `pwd` for the current vim Tab.
@@ -110,26 +135,6 @@ gwt:setup({
     clearjumps_on_change = <boolean> -- default: true,
     autopush = <boolean> -- default: false,
 })
-```
-
-### Usage<a name="usage"></a>
-
-Three primary functions should cover your day-to-day.
-
-The path can be either relative from the git root dir or absolute path to the worktree.
-
-```lua
--- Creates a worktree.  Requires the path, branch name, and the upstream
--- Example:
-:lua require("git-worktree"):create_worktree("feat-69", "master", "origin")
-
--- switches to an existing worktree.  Requires the path name
--- Example:
-:lua require("git-worktree"):switch_worktree("feat-69")
-
--- deletes to an existing worktree.  Requires the path name
--- Example:
-:lua require("git-worktree"):delete_worktree("feat-69")
 ```
 
 ### Hooks<a name="hooks"></a>

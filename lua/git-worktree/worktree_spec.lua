@@ -1,46 +1,19 @@
 local git_harness = require('git-worktree.test.git_util')
-local git_worktree = require('git-worktree')
-local Log = require('git-worktree.logger')
 local Path = require('plenary.path')
--- local Status = require('git-worktree.status')
-
--- local status = Status:new()
+local stub = require('luassert.stub')
 
 local cwd = vim.fn.getcwd()
 
--- luacheck: globals repo_dir
+-- luacheck: globals repo_dir config git_worktree
 describe('[Worktree]', function()
-    local completed_create = false
-    local completed_switch = false
-    local completed_delete = false
-
-    local reset_variables = function()
-        completed_create = false
-        completed_switch = false
-        completed_delete = false
-    end
+    local Hooks = require('git-worktree.hooks').hooks
+    stub(Hooks, 'emit')
 
     before_each(function()
-        reset_variables()
         git_worktree = require('git-worktree')
-        git_worktree:setup {}
-        git_worktree:hooks {
-            CREATE = function()
-                print('called create')
-                completed_create = true
-            end,
-            DELETE = function()
-                print('called delete')
-                completed_delete = true
-            end,
-            SWITCH = function()
-                completed_switch = true
-            end,
-        }
+        git_worktree.setup {}
     end)
-
     after_each(function()
-        -- git_worktree.reset()
         vim.api.nvim_command('cd ' .. cwd)
     end)
 
@@ -52,34 +25,45 @@ describe('[Worktree]', function()
             end)
             it('able to switch to worktree (relative path)', function()
                 local wt = 'featB'
-                local path = '../' .. wt
-                git_worktree:switch_worktree(path)
-                --
-                vim.wait(10000, function()
-                    return completed_switch
+                local input_path = '../' .. wt
+                local expected_path = working_dir .. Path.path.sep .. wt
+                local prev_path = working_dir .. Path.path.sep .. 'master'
+                require('git-worktree').switch_worktree(input_path)
+
+                local co = coroutine.running()
+                vim.defer_fn(function()
+                    coroutine.resume(co)
                 end, 1000)
-                --
-                --     -- Check to make sure directory was switched
-                assert.is_true(completed_switch)
-                assert.are.same(working_dir .. Path.path.sep .. wt, vim.loop.cwd())
+                --The test will reach here immediately.
+                coroutine.yield()
+
+                -- Check to make sure directory was switched
+                assert.stub(Hooks.emit).was_called_with(Hooks, 'SWITCH', input_path, prev_path)
+                assert.are.same(expected_path, vim.loop.cwd())
             end)
         end)
+
         describe('[normal repo]', function()
             before_each(function()
                 working_dir, master_dir = git_harness.prepare_repo_normal_worktree(1)
             end)
             it('able to switch to worktree (relative path)', function()
                 local wt = 'featB'
-                local path = '../' .. wt
-                git_worktree:switch_worktree(path)
-                --
-                vim.wait(10000, function()
-                    return completed_switch
+                local input_path = '../' .. wt
+                local expected_path = working_dir .. Path.path.sep .. wt
+                local prev_path = working_dir .. Path.path.sep .. 'master'
+                require('git-worktree').switch_worktree(input_path)
+
+                local co = coroutine.running()
+                vim.defer_fn(function()
+                    coroutine.resume(co)
                 end, 1000)
-                --
-                --     -- Check to make sure directory was switched
-                assert.is_true(completed_switch)
-                assert.are.same(working_dir .. Path.path.sep .. wt, vim.loop.cwd())
+                --The test will reach here immediately.
+                coroutine.yield()
+
+                -- Check to make sure directory was switched
+                assert.stub(Hooks.emit).was_called_with(Hooks, 'SWITCH', input_path, prev_path)
+                assert.are.same(expected_path, vim.loop.cwd())
             end)
         end)
     end)
@@ -92,18 +76,22 @@ describe('[Worktree]', function()
             end)
             it('able to create a worktree (relative path)', function()
                 local wt = 'featB'
-                local path = '../' .. wt
-                git_worktree:create_worktree(path, wt)
-                --
-                vim.wait(10000, function()
-                    -- need to wait for final switch
-                    return completed_switch
+                local input_path = '../' .. wt
+                local expected_path = working_dir .. Path.path.sep .. wt
+                local prev_path = working_dir .. Path.path.sep .. 'master'
+                require('git-worktree').create_worktree(input_path, wt)
+
+                local co = coroutine.running()
+                vim.defer_fn(function()
+                    coroutine.resume(co)
                 end, 1000)
-                --
-                --     -- Check to make sure directory was switched
-                assert.is_true(completed_create)
-                assert.is_true(completed_switch)
-                assert.are.same(working_dir .. Path.path.sep .. wt, vim.loop.cwd())
+                --The test will reach here immediately.
+                coroutine.yield()
+
+                -- Check to make sure directory was switched
+                assert.stub(Hooks.emit).was_called_with(Hooks, 'CREATE', input_path, wt, nil)
+                assert.stub(Hooks.emit).was_called_with(Hooks, 'SWITCH', input_path, prev_path)
+                assert.are.same(expected_path, vim.loop.cwd())
             end)
         end)
         describe('[normal repo]', function()
@@ -112,17 +100,22 @@ describe('[Worktree]', function()
             end)
             it('able to create a worktree (relative path)', function()
                 local wt = 'featB'
-                local path = '../' .. wt
-                git_worktree:create_worktree(path, wt)
-                --
-                vim.wait(10000, function()
-                    return completed_switch
+                local input_path = '../' .. wt
+                local expected_path = working_dir .. Path.path.sep .. wt
+                local prev_path = working_dir .. Path.path.sep .. 'master'
+                require('git-worktree').create_worktree(input_path, wt)
+
+                local co = coroutine.running()
+                vim.defer_fn(function()
+                    coroutine.resume(co)
                 end, 1000)
-                --
-                --     -- Check to make sure directory was switched
-                assert.is_true(completed_create)
-                assert.is_true(completed_switch)
-                assert.are.same(working_dir .. Path.path.sep .. wt, vim.loop.cwd())
+                --The test will reach here immediately.
+                coroutine.yield()
+
+                -- Check to make sure directory was switched
+                assert.stub(Hooks.emit).was_called_with(Hooks, 'CREATE', input_path, wt, nil)
+                assert.stub(Hooks.emit).was_called_with(Hooks, 'SWITCH', input_path, prev_path)
+                assert.are.same(expected_path, vim.loop.cwd())
             end)
         end)
     end)
@@ -135,17 +128,18 @@ describe('[Worktree]', function()
             end)
             it('able to create a worktree (relative path)', function()
                 local wt = 'featB'
-                local path = '../' .. wt
-                git_worktree:delete_worktree(path, true)
-                --
-                vim.wait(10000, function()
-                    Log.debug('comp_del: %s', completed_delete)
-                    return completed_delete
+                local input_path = '../' .. wt
+                require('git-worktree').delete_worktree(input_path, true)
+
+                local co = coroutine.running()
+                vim.defer_fn(function()
+                    coroutine.resume(co)
                 end, 1000)
-                Log.debug('comp_del finished: %s', completed_delete)
-                --
-                --     -- Check to make sure directory was switched
-                assert.is_true(completed_delete)
+                --The test will reach here immediately.
+                coroutine.yield()
+
+                -- Check to make sure directory was switched
+                assert.stub(Hooks.emit).was_called_with(Hooks, 'DELETE', input_path)
                 assert.are.same(master_dir, vim.loop.cwd())
             end)
         end)
@@ -155,15 +149,18 @@ describe('[Worktree]', function()
             end)
             it('able to create a worktree (relative path)', function()
                 local wt = 'featB'
-                local path = '../' .. wt
-                git_worktree:delete_worktree(path, wt)
-                --
-                vim.wait(10000, function()
-                    return completed_delete
+                local input_path = '../' .. wt
+                require('git-worktree').delete_worktree(input_path, wt)
+
+                local co = coroutine.running()
+                vim.defer_fn(function()
+                    coroutine.resume(co)
                 end, 1000)
-                --
-                --     -- Check to make sure directory was switched
-                assert.is_true(completed_delete)
+                --The test will reach here immediately.
+                coroutine.yield()
+
+                -- Check to make sure directory was switched
+                assert.stub(Hooks.emit).was_called_with(Hooks, 'DELETE', input_path)
                 assert.are.same(master_dir, vim.loop.cwd())
             end)
         end)

@@ -64,16 +64,42 @@
             })
           ];
         };
-        devShells = {
-          default = pkgs.mkShell {
-            name = "haskell-tools.nvim-shell";
-            inherit (pre-commit-check) shellHook;
-            buildInputs = with pkgs; [
-              luajitPackages.luacheck
-              luajitPackages.vusted
-              stylua
-            ];
-          };
+        devShells = let
+          mkDevShell = luaVersion: let
+            luaEnv = pkgs."lua${luaVersion}".withPackages (lp:
+              with lp; [
+                busted
+                luacheck
+                luarocks
+              ]);
+          in
+            pkgs.mkShell {
+              name = "git-worktree-nvim";
+              buildInputs = [
+                luaEnv
+              ];
+              shellHook = let
+                myVimPackage = with pkgs.vimPlugins; {
+                  start = [
+                    plenary-nvim
+                  ];
+                };
+                packDirArgs.myNeovimPackages = myVimPackage;
+              in
+                pre-commit-check.shellHook
+                + ''
+                  export DEBUG_PLENARY="debug"
+                  cat <<-EOF > minimal.vim
+                    set rtp+=.
+                    set packpath^=${pkgs.vimUtils.packDir packDirArgs}
+                  EOF
+                '';
+            };
+        in {
+          default = mkDevShell "jit";
+          luajit = mkDevShell "jit";
+          lua-51 = mkDevShell "5_1";
+          lua-52 = mkDevShell "5_2";
         };
 
         packages.neodev-plugin = pkgs.vimUtils.buildVimPlugin {

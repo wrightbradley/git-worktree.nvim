@@ -1,7 +1,7 @@
 local M = {}
 
 ---@class GitWorktreeConfig
-local defaults = {
+local config = {
 
     -- command to change directory on your OS.
     --
@@ -34,14 +34,20 @@ local defaults = {
     autopush = false,
 }
 
---- @return GitWorktreeConfig
-M._get_defaults = function()
-    return defaults
+--- Get a configuration value
+--- @param opt string
+--- @return any
+M.get = function()
+    return config
 end
 
----@param opts? GitWorktreeConfig
-function M.setup(opts)
-    local config = vim.tbl_deep_extend('force', vim.deepcopy(defaults), opts or {})
+--- Set user configurations
+--- @param user_configs table
+--- @return table
+M.set = function(user_configs)
+    vim.validate { user_configs = { user_configs, 'table' } }
+
+    config = vim.tbl_deep_extend('force', config, user_configs)
     return config
 end
 

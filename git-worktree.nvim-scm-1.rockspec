@@ -8,10 +8,12 @@ version = _MODREV .. _SPECREV
 
 dependencies = {
     'lua >= 5.1',
+    'plenary.nvim'
 }
 
 test_dependencies = {
     'lua >= 5.1',
+    'plenary.nvim'
 }
 
 source = {

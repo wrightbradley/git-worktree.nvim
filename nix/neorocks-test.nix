@@ -1,5 +1,7 @@
 {
+  curl,
   extraPkgs ? [],
+  git,
   name,
   neorocksTest,
   nvim,
@@ -24,8 +26,16 @@ in
     neovim = nvim-wrapped;
 
     extraPackages =
-      []
+      [
+        git
+        curl
+      ]
       ++ extraPkgs;
+    luaPackages = ps:
+      with ps; [
+        # LuaRocks dependencies must be added here.
+        plenary-nvim
+      ];
 
     preCheck = ''
       # Neovim expects to be able to create log files, etc.

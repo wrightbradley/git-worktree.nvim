@@ -1,5 +1,0 @@
-describe('Can require haskell-tools with default configs.', function()
-    it('Public API is available after setup.', function()
-        assert(1 == 1)
-    end)
-end)

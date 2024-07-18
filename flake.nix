@@ -181,10 +181,29 @@
               };
             };
           };
+
+          neorocks-test = pkgs.neorocksTest {
+            src = self; # Project containing the rockspec and .busted files.
+            # Plugin name. If running multiple tests,
+            # you can use pname for the plugin name instead
+            name = "git-worktree.nvim";
+            # version = "scm-1"; # Optional, defaults to "scm-1";
+            neovim = pkgs.neovim-nightly; # Optional, defaults to neovim-nightly.
+            luaPackages = ps:
+            # Optional
+              with ps; [
+                # LuaRocks dependencies must be added here.
+                plenary-nvim
+              ];
+            extraPackages = with pkgs; [
+              gitMinimal
+            ]; # Optional. External test runtime dependencies.
+          };
         in {
           inherit pre-commit-check;
           inherit type-check-stable;
           inherit type-check-nightly;
+          inherit neorocks-test;
         };
       };
     };

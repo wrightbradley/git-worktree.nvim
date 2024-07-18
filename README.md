@@ -1,83 +1,100 @@
-# git-worktree.nvim<a name="git-worktreenvim"></a>
+<!-- markdownlint-disable -->
 
-<div align="center">
+![git-worktree.nvim](https://socialify.git.ci/polarmutex/git-worktree.nvim/image?font=Source%20Code%20Pro&name=1&stargazers=1&theme=Dark)
 
-[![Lua](https://img.shields.io/badge/Lua-blue.svg?style=for-the-badge&logo=lua)](http://www.lua.org)
-[![Neovim](https://img.shields.io/badge/Neovim%200.8+-green.svg?style=for-the-badge&logo=neovim)](https://neovim.io)
+[![Neovim][neovim-shield]][neovim-url]
+[![Lua][lua-shield]][lua-url]
+[![Nix][nix-shield]][nix-url]
 
-</div>
-
-## TOC<a name="toc"></a>
-
-<!-- mdformat-toc start --slug=github --maxlevel=6 --minlevel=1 -->
-
-- [git-worktree.nvim](#git-worktreenvim)
-  - [TOC](#toc)
-  - [About](#about)
-  - [Prerequisites](#prerequisites)
-    - [Optional](#optional)
-  - [Installation](#installation)
-  - [Quick Setup](#quick-setup)
-    - [Telescope Config](#telescope-config)
-  - [Usage](#usage)
-  - [Advanced Config](#advanced-config)
-    - [Hooks](#hooks)
-  - [Save](#save)
-  - [Repository](#repository)
-    - [Debugging](#debugging)
-    - [Troubleshooting](#troubleshooting)
-    - [Switch and Delete a worktrees](#switch-and-delete-a-worktrees)
-    - [Create a worktree](#create-a-worktree)
-
-<!-- mdformat-toc end -->
-
-## About<a name="about"></a>
+<!-- markdownlint-restore -->
 
 A simple wrapper around git worktree operations, create, switch, and delete.
 There is some assumed workflow within this plugin, but pull requests are
 welcomed to fix that).
 
-## Prerequisites<a name="prerequisites"></a>
+## Quick Links
 
-- `neovim >= 0.8`
+## Prerequisites
 
-### Optional<a name="optional"></a>
+### Required
 
-- install telescope.nvim for telescope extension
+-   `neovim >= 0.9`
+-   `plenary.nvim`
 
-## Installation<a name="installation"></a>
+### Optional
 
-- install using your favorite plugin manager
-- or install using [lazy.nvim](https://github.com/folke/lazy.nvim)
+-   [`telescope.nvim`](https://github.com/nvim-telescope/telescope.nvim)
+
+## Installation
+
+This plugin is [available on LuaRocks][luarocks-url]:
 
 ```lua
 {
-    "polarmutex/git-worktree.nvim",
-    branch = "v2",
-    dependencies = { "nvim-lua/plenary.nvim" }
+  'polarmutex/git-worktree.nvim',
+  version = '^2',
+  dependencies = { "nvim-lua/plenary.nvim" }
 }
 ```
 
-> \[!NOTE\]
->
-> It is suggested to pin to tagged releases if you would like to avoid breaking changes.
+## Quick Setup
 
-## Quick Setup<a name="quick-setup"></a>
+This plugin does not require to call setup function
 
+## Features
+
+## Usage
+
+Three primary functions should cover your day-to-day.
+
+The path can be either relative from the git root dir or absolute path to the worktree.
+
+```lua
+-- Creates a worktree.  Requires the path, branch name, and the upstream
+-- Example:
+require("git-worktree").create_worktree("feat-69", "master", "origin")
+
+-- switches to an existing worktree.  Requires the path name
+-- Example:
+require("git-worktree").switch_worktree("feat-69")
+
+-- deletes to an existing worktree.  Requires the path name
+-- Example:
+require("git-worktree").delete_worktree("feat-69")
 ```
-local gwt = require("git-worktree")
 
--- REQUIRED
-gwt:setup()
--- REQUIRED
+## Advanced Configuration
 
+to modify the default configuration, set `vim.g.git_worktree`.
+
+-   See [`:help git-worktree.config`](./doc/git-worktree.txt) for a detailed
+    documentation of all available configuration options.
+
+```lua
+vim.g.git_worktree = {
+    ...
+}
+```
+
+### Hooks
+
+Yes! The best part about `git-worktree` is that it emits information so that you
+can act on it.
+
+```lua
 local Hooks = require("git-worktree.hooks")
--- you probably want al least this basic hook to change current buffer
--- on worktree switch,  more on hook below
-gwt:hooks({
-    SWITCH = Hooks.builtins.update_current_buffer_on_switch
-})
+
+Hooks.register(Hooks.type.SWITCH, Hooks.builtins.update_current_buffer_on_switch)
 ```
+
+> [!IMPORTANT]
+>
+> -   **no** builtins are registered
+>     by default and will have to be registered
+
+This means that you can use [harpoon](https://github.com/ThePrimeagen/harpoon)
+or other plugins to perform follow up operations that will help in turbo
+charging your development experience!
 
 ### Telescope Config<a name="telescope-config"></a>
 
@@ -87,99 +104,6 @@ make sure to add `telescope` to your dependencies and paste this following snipp
 ```lua
 require('telescope').load_extension('git_worktree')
 ```
-
-## Usage<a name="usage"></a>
-
-Three primary functions should cover your day-to-day.
-
-The path can be either relative from the git root dir or absolute path to the worktree.
-
-```lua
--- Creates a worktree.  Requires the path, branch name, and the upstream
--- Example:
-:lua require("git-worktree").create_worktree("feat-69", "master", "origin")
-
--- switches to an existing worktree.  Requires the path name
--- Example:
-:lua require("git-worktree").switch_worktree("feat-69")
-
--- deletes to an existing worktree.  Requires the path name
--- Example:
-:lua require("git-worktree").delete_worktree("feat-69")
-```
-
-## Advanced Config<a name="advanced-config"></a>
-
-`change_directory_command`: The vim command used to change to the new worktree directory.
-Set this to `tcd` if you want to only change the `pwd` for the current vim Tab.
-
-`update_on_change`:  Updates the current buffer to point to the new work tree if
-the file is found in the new project. Otherwise, the following command will be run.
-
-`update_on_change_command`: The vim command to run during the `update_on_change` event.
-Note, that this command will only be run when the current file is not found in the new worktree.
-This option defaults to `e .` which opens the root directory of the new worktree.
-
-`clearjumps_on_change`: Every time you switch branches, your jumplist will be
-cleared so that you don't accidentally go backward to a different branch and
-edit the wrong files.
-
-`autopush`: When creating a new worktree, it will push the branch to the upstream then perform a `git rebase`
-
-```lua
-local gwt = require('git-worktree')
-gwt:setup({
-    change_directory_command = <str> -- default: "cd",
-    update_on_change = <boolean> -- default: true,
-    update_on_change_command = <str> -- default: "e .",
-    clearjumps_on_change = <boolean> -- default: true,
-    autopush = <boolean> -- default: false,
-})
-```
-
-### Hooks<a name="hooks"></a>
-
-Yes!  The best part about `git-worktree` is that it emits information so that you
-can act on it.
-
-```lua
-local gwt = require("git-worktree")
-
--- TODO Update
--- op = Operations.Switch, Operations.Create, Operations.Delete
--- metadata = table of useful values (structure dependent on op)
---      Switch
---          path = path you switched to
---          prev_path = previous worktree path
---      Create
---          path = path where worktree created
---          branch = branch name
---          upstream = upstream remote name
---      Delete
---          path = path where worktree deleted
-
-gwt:hooks({
-    SWITCH = function(path, prev_path)
-        print("Switched from " .. prev_path .. " to " .. path)
-  end
-end)
-```
-
-This means that you can use [harpoon](https://github.com/ThePrimeagen/harpoon)
-or other plugins to perform follow up operations that will help in turbo
-charging your development experience!
-
-## Save<a name="save"></a>
-
-## Repository<a name="repository"></a>
-
-This repository does work best with a bare repo.  To clone a bare repo, do the following.
-
-```shell
-git clone --bare <upstream>
-```
-
-If you do not use a bare repo, using telescope create command will be more helpful in the process of creating a branch.
 
 ### Debugging<a name="debugging"></a>
 
@@ -191,7 +115,7 @@ By default, logging is enabled for warnings and above. This can be changed by se
 
 If the upstream is not setup correctly when trying to pull or push, make sure the following command returns what is shown below. This seems to happen with the gitHub cli.
 
-```
+```lua
 git config --get remote.origin.fetch
 
 +refs/heads/*:refs/remotes/origin/*
@@ -199,31 +123,17 @@ git config --get remote.origin.fetch
 
 if it does not run the following
 
-```
+```bash
 git config remote.origin.fetch "+refs/heads/*:refs/remotes/origin/*"
 ```
 
-### Switch and Delete a worktrees<a name="switch-and-delete-a-worktrees"></a>
+<!-- MARKDOWN LINKS & IMAGES -->
 
-To bring up the telescope window listing your workspaces run the following
-
-```lua
-:lua require('telescope').extensions.git_worktree.git_worktrees()
--- <Enter> - switches to that worktree
--- <c-d> - deletes that worktree
--- <c-f> - toggles forcing of the next deletion
-```
-
-### Create a worktree<a name="create-a-worktree"></a>
-
-To bring up the telescope window to create a new worktree run the following
-
-```lua
-:lua require('telescope').extensions.git_worktree.create_git_worktree()
-```
-
-First a telescope git branch window will appear. Pressing enter will choose the selected branch for the branch name. If no branch is selected, then the prompt will be used as the branch name.
-
-After the git branch window, a prompt will be presented to enter the path name to write the worktree to.
-
-As of now you can not specify the upstream in the telescope create workflow, however if it finds a branch of the same name in the origin it will use it
+[neovim-shield]: https://img.shields.io/badge/NeoVim-%2357A143.svg?&style=for-the-badge&logo=neovim&logoColor=white
+[neovim-url]: https://neovim.io/
+[lua-shield]: https://img.shields.io/badge/lua-%232C2D72.svg?style=for-the-badge&logo=lua&logoColor=white
+[lua-url]: https://www.lua.org/
+[nix-shield]: https://img.shields.io/badge/nix-0175C2?style=for-the-badge&logo=NixOS&logoColor=white
+[nix-url]: https://nixos.org/
+[luarocks-shield]: https://img.shields.io/luarocks/v/MrcJkb/haskell-tools.nvim?logo=lua&color=purple&style=for-the-badge
+[luarocks-url]: https://luarocks.org/modules/polarmutex/git-worktree.nvim

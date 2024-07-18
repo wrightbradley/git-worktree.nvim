@@ -20,9 +20,8 @@ function M.has_worktree(path_str, cb)
     end
 
     local job = Job:new {
-        'git',
-        'worktree',
-        'list',
+        command = 'git',
+        args = { 'worktree', 'list' },
         on_stdout = function(_, data)
             local list_data = {}
             for section in data:gmatch('%S+') do
@@ -60,10 +59,8 @@ end
 --- @return string|nil
 function M.gitroot_dir()
     local job = Job:new {
-        'git',
-        'rev-parse',
-        '--path-format=absolute',
-        '--git-common-dir',
+        command = 'git',
+        args = { 'rev-parse', '--path-format=absolute', '--git-common-dir' },
         cwd = vim.loop.cwd(),
         on_stderr = function(_, data)
             Log.error('ERROR: ' .. data)
@@ -88,10 +85,8 @@ end
 --- @return string|nil
 function M.toplevel_dir()
     local job = Job:new {
-        'git',
-        'rev-parse',
-        '--path-format=absolute',
-        '--show-toplevel',
+        command = 'git',
+        args = { 'rev-parse', '--path-format=absolute', '--show-toplevel' },
         cwd = vim.loop.cwd(),
         on_stderr = function(_, data)
             Log.error('ERROR: ' .. data)
@@ -116,8 +111,8 @@ end
 function M.has_branch(branch, cb)
     local found = false
     local job = Job:new {
-        'git',
-        'branch',
+        command = 'git',
+        args = { 'branch' },
         on_stdout = function(_, data)
             -- remove  markere on current branch
             data = data:gsub('*', '')
@@ -182,12 +177,11 @@ function M.delete_worktree_job(path, force)
 end
 
 --- @param path string
---- @return plenary:Job
+--- @return Job
 function M.fetchall_job(path)
     return Job:new {
-        'git',
-        'fetch',
-        '--all',
+        command = 'git',
+        args = { 'fetch', '--all' },
         cwd = path,
         on_start = function()
             Log.debug('git fetch --all (This may take a moment)')
@@ -198,7 +192,7 @@ end
 --- @param path string
 --- @param branch string
 --- @param upstream string
---- @return plenary:Job
+--- @return Job
 function M.setbranch_job(path, branch, upstream)
     local set_branch_cmd = 'git'
     local set_branch_args = { 'branch', string.format('--set-upstream-to=%s/%s', upstream, branch) }
@@ -215,7 +209,7 @@ end
 --- @param path string
 --- @param branch string
 --- @param upstream string
---- @return plenary:Job
+--- @return Job
 function M.setpush_job(path, branch, upstream)
     -- TODO: How to configure origin???  Should upstream ever be the push
     -- destination?
@@ -232,11 +226,11 @@ function M.setpush_job(path, branch, upstream)
 end
 
 --- @param path string
---- @return plenary:Job
+--- @return Job
 function M.rebase_job(path)
     return Job:new {
-        'git',
-        'rebase',
+        command = 'git',
+        args = { 'rebase' },
         cwd = path,
         on_start = function()
             Log.debug('git rebase')

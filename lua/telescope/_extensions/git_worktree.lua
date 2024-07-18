@@ -10,39 +10,54 @@ local git_worktree = require('git-worktree')
 
 local force_next_deletion = false
 
+-- Get the path of the selected worktree
+-- @param prompt_bufnr number: the prompt buffer number
+-- @return string: the path of the selected worktree
 local get_worktree_path = function(prompt_bufnr)
     local selection = action_state.get_selected_entry(prompt_bufnr)
     return selection.path
 end
 
+-- Switch to the selected worktree
+-- @param prompt_bufnr number: the prompt buffer number
+-- @return nil
 local switch_worktree = function(prompt_bufnr)
     local worktree_path = get_worktree_path(prompt_bufnr)
     actions.close(prompt_bufnr)
     if worktree_path ~= nil then
-        git_worktree:switch_worktree(worktree_path)
+        git_worktree.switch_worktree(worktree_path)
     end
 end
 
+-- Toggle the forced deletion of the next worktree
+-- @return nil
 local toggle_forced_deletion = function()
     -- redraw otherwise the message is not displayed when in insert mode
     if force_next_deletion then
-        -- print('The next deletion will not be forced')
+        vim.print('The next deletion will not be forced')
         vim.fn.execute('redraw')
     else
-        -- print('The next deletion will be forced')
+        vim.print('The next deletion will be forced')
         vim.fn.execute('redraw')
         force_next_deletion = true
     end
 end
 
+-- Handler for successful deletion
+-- @return nil
 local delete_success_handler = function()
     force_next_deletion = false
 end
 
+-- Handler for failed deletion
+-- @return nil
 local delete_failure_handler = function()
-    -- print('Deletion failed, use <C-f> to force the next deletion')
+    print('Deletion failed, use <C-f> to force the next deletion')
 end
 
+-- Ask the user to confirm the deletion of a worktree
+-- @param forcing boolean: whether the deletion is forced
+-- @return boolean: whether the deletion is confirmed
 local ask_to_confirm_deletion = function(forcing)
     if forcing then
         return vim.fn.input('Force deletion of worktree? [y/n]: ')
@@ -51,6 +66,9 @@ local ask_to_confirm_deletion = function(forcing)
     return vim.fn.input('Delete worktree? [y/n]: ')
 end
 
+-- Confirm the deletion of a worktree
+-- @param forcing boolean: whether the deletion is forced
+-- @return boolean: whether the deletion is confirmed
 local confirm_deletion = function(forcing)
     if not git_worktree._config.confirm_telescope_deletions then
         return true
@@ -62,10 +80,13 @@ local confirm_deletion = function(forcing)
         return true
     end
 
-    -- print("Didn't delete worktree")
+    print("Didn't delete worktree")
     return false
 end
 
+-- Delete the selected worktree
+-- @param prompt_bufnr number: the prompt buffer number
+-- @return nil
 local delete_worktree = function(prompt_bufnr)
     if not confirm_deletion() then
         return
@@ -81,6 +102,48 @@ local delete_worktree = function(prompt_bufnr)
     end
 end
 
+-- Create a prompt to get the path of the new worktree
+-- @param cb function: the callback to call with the path
+-- @return nil
+local create_input_prompt = function(cb)
+    local subtree = vim.fn.input('Path to subtree > ')
+    cb(subtree)
+end
+
+-- Create a worktree
+-- @param opts table: the options for the telescope picker (optional)
+-- @return nil
+local create_worktree = function(opts)
+    opts = opts or {}
+    opts.attach_mappings = function()
+        actions.select_default:replace(function(prompt_bufnr, _)
+            local selected_entry = action_state.get_selected_entry()
+            local current_line = action_state.get_current_line()
+
+            actions.close(prompt_bufnr)
+
+            local branch = selected_entry ~= nil and selected_entry.value or current_line
+
+            if branch == nil then
+                return
+            end
+
+            create_input_prompt(function(name)
+                if name == '' then
+                    name = branch
+                end
+                git_worktree.create_worktree(name, branch)
+            end)
+        end)
+
+        return true
+    end
+    require('telescope.builtin').git_branches(opts)
+end
+
+-- List the git worktrees
+-- @param opts table: the options for the telescope picker (optional)
+-- @return nil
 local telescope_git_worktree = function(opts)
     opts = opts or {}
     local output = utils.get_os_command_output { 'git', 'worktree', 'list' }
@@ -103,8 +166,7 @@ local telescope_git_worktree = function(opts)
             local index = #results + 1
             for key, val in pairs(widths) do
                 if key == 'path' then
-                    local new_path = utils.transform_path(opts, entry[key])
-                    local path_len = strings.strdisplaywidth(new_path or '')
+                    local path_len = strings.strdisplaywidth(entry[key] or '')
                     widths[key] = math.max(val, path_len)
                 else
                     widths[key] = math.max(val, strings.strdisplaywidth(entry[key] or ''))
@@ -167,41 +229,8 @@ local telescope_git_worktree = function(opts)
         :find()
 end
 
-local create_input_prompt = function(cb)
-    local subtree = vim.fn.input('Path to subtree > ')
-    cb(subtree)
-end
-
-local create_worktree = function(opts)
-    opts = opts or {}
-    opts.attach_mappings = function()
-        actions.select_default:replace(function(prompt_bufnr, _)
-            local selected_entry = action_state.get_selected_entry()
-            local current_line = action_state.get_current_line()
-
-            actions.close(prompt_bufnr)
-
-            local branch = selected_entry ~= nil and selected_entry.value or current_line
-
-            if branch == nil then
-                return
-            end
-
-            create_input_prompt(function(name)
-                if name == '' then
-                    name = branch
-                end
-                git_worktree.create_worktree(name, branch)
-            end)
-        end)
-
-        -- do we need to replace other default maps?
-
-        return true
-    end
-    require('telescope.builtin').git_branches(opts)
-end
-
+-- Register the extension
+-- @return table: the extension
 return require('telescope').register_extension {
     exports = {
         git_worktree = telescope_git_worktree,

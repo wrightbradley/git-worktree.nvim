@@ -7,6 +7,9 @@ local function get_absolute_path(path)
     if Path:new(path):is_absolute() then
         return path
     else
+        print(path)
+        print(vim.loop.cwd())
+        print(Path:new(vim.loop.cwd(), path))
         return Path:new(vim.loop.cwd(), path):absolute()
     end
 end
@@ -15,7 +18,7 @@ local function change_dirs(path)
     Log.info('changing dirs:  %s ', path)
     local worktree_path = get_absolute_path(path)
     local previous_worktree = vim.loop.cwd()
-    local config = require('git-worktree.config').get()
+    local config = require('git-worktree.config')
 
     -- vim.loop.chdir(worktree_path)
     if Path:new(worktree_path):exists() then
@@ -70,7 +73,7 @@ function M.switch(path)
         vim.schedule(function()
             local prev_path = change_dirs(path)
             local Hooks = require('git-worktree.hooks')
-            Hooks.hooks:emit(Hooks.hook_event_names.SWITCH, path, prev_path)
+            Hooks.emit(Hooks.type.SWITCH, path, prev_path)
         end)
     end)
 end
@@ -97,7 +100,7 @@ function M.create(path, branch, upstream)
         end
 
         Git.has_branch(branch, function(found_branch)
-            local config = require('git-worktree.config').get()
+            local config = require('git-worktree.config')
             local worktree_path
             if Path:new(path):is_absolute() then
                 worktree_path = path
@@ -139,7 +142,7 @@ function M.create(path, branch, upstream)
 
                     vim.schedule(function()
                         local Hooks = require('git-worktree.hooks')
-                        Hooks.hooks:emit(Hooks.hook_event_names.CREATE, path, branch, upstream)
+                        Hooks.emit(Hooks.type.CREATE, path, branch, upstream)
                         M.switch(path)
                     end)
                 end)
@@ -147,7 +150,7 @@ function M.create(path, branch, upstream)
                 create_wt_job:after(function()
                     vim.schedule(function()
                         local Hooks = require('git-worktree.hooks')
-                        Hooks.hooks:emit(Hooks.hook_event_names.CREATE, path, branch, upstream)
+                        Hooks.emit(Hooks.type.CREATE, path, branch, upstream)
                         M.switch(path)
                     end)
                 end)
@@ -180,7 +183,7 @@ function M.delete(path, force, opts)
         delete:after_success(vim.schedule_wrap(function()
             Log.info('delete after success')
             local Hooks = require('git-worktree.hooks')
-            Hooks.hooks:emit(Hooks.hook_event_names.DELETE, path)
+            Hooks.emit(Hooks.type.DELETE, path)
             if opts.on_success then
                 opts.on_success()
             end

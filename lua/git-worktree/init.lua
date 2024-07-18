@@ -1,13 +1,6 @@
-local Config = require('git-worktree.config')
 local Worktree = require('git-worktree.worktree')
 
 local M = {}
-
-function M.setup(user_configs)
-    Config.set(user_configs or {})
-    -- initialize hooks
-    require('git-worktree.hooks')
-end
 
 --Switch the current worktree
 ---@param path string

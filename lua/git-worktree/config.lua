@@ -1,7 +1,24 @@
-local M = {}
+---@mod git-worktree.config
+
+---@brief [[
+
+--- The plugin configuration.
+--- Merges the default config with `vim.g.git_worktree`.
+
+---@brief ]]
 
 ---@class GitWorktreeConfig
-local config = {
+---@field change_directory_command string command to change directory on your OS
+---@field update_on_change boolean ????
+---@field update_on_change_command string ?????
+---@field clearjumps_on_change boolean
+---@field confirm_telescope_deletions boolean
+---@field autopush boolean
+
+---@type (fun():GitWorktreeConfig) | GitWorktreeConfig | nil
+vim.g.haskell_tools = vim.g.haskell_tools
+
+local GitWorktreeDefaultConfig = {
 
     -- command to change directory on your OS.
     --
@@ -34,21 +51,10 @@ local config = {
     autopush = false,
 }
 
---- Get a configuration value
---- @param opt string
---- @return any
-M.get = function()
-    return config
-end
+local git_worktree = vim.g.git_worktree or {}
+---@type GitWorktreeConfig
+local opts = type(git_worktree) == 'function' and git_worktree() or git_worktree
 
---- Set user configurations
---- @param user_configs table
---- @return table
-M.set = function(user_configs)
-    vim.validate { user_configs = { user_configs, 'table' } }
+local GitWorktreeConfig = vim.tbl_deep_extend('force', {}, GitWorktreeDefaultConfig, opts)
 
-    config = vim.tbl_deep_extend('force', config, user_configs)
-    return config
-end
-
-return M
+return GitWorktreeConfig

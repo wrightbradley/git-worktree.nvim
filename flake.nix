@@ -2,29 +2,33 @@
   description = "git-worktree.nvim - supercharge your haskell experience in neovim";
 
   inputs = {
-    flake-parts.url = "github:hercules-ci/flake-parts";
     nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
+    flake-parts.url = "github:hercules-ci/flake-parts";
+
     pre-commit-hooks = {
       url = "github:cachix/pre-commit-hooks.nix";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
-    neovim = {
-      url = "github:neovim/neovim?dir=contrib";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
-    neodev-nvim = {
-      url = "github:folke/neodev.nvim";
-      flake = false;
-    };
-    plenary-nvim = {
-      url = "github:nvim-lua/plenary.nvim";
-      flake = false;
-    };
-    telescope-nvim = {
-      url = "github:nvim-telescope/telescope.nvim";
-      flake = false;
-    };
+    neorocks.url = "github:nvim-neorocks/neorocks";
+    gen-luarc.url = "github:mrcjkb/nix-gen-luarc-json";
+
+    # neovim = {
+    #   url = "github:neovim/neovim?dir=contrib";
+    #   inputs.nixpkgs.follows = "nixpkgs";
+    # };
+    # neodev-nvim = {
+    #   url = "github:folke/neodev.nvim";
+    #   flake = false;
+    # };
+    # plenary-nvim = {
+    #   url = "github:nvim-lua/plenary.nvim";
+    #   flake = false;
+    # };
+    # telescope-nvim = {
+    #   url = "github:nvim-telescope/telescope.nvim";
+    #   flake = false;
+    # };
   };
 
   outputs = inputs @ {
@@ -46,6 +50,26 @@
         inputs',
         ...
       }: let
+        luarc-plugins = with pkgs.lua51Packages; (with pkgs.vimPlugins; [
+          telescope-nvim
+          plenary-nvim
+        ]);
+
+        luarc-nightly = pkgs.mk-luarc {
+          nvim = pkgs.neovim-nightly;
+          plugins = luarc-plugins;
+        };
+
+        luarc-stable = pkgs.mk-luarc {
+          nvim = pkgs.neovim-unwrapped;
+          plugins = luarc-plugins;
+          disabled-diagnostics = [
+            #"undefined-doc-name"
+            #"redundant-parameter"
+            #"invisible"
+          ];
+        };
+
         pre-commit-check = inputs.pre-commit-hooks.lib.${system}.run {
           src = self;
           hooks = {
@@ -59,8 +83,10 @@
         _module.args.pkgs = import inputs.nixpkgs {
           inherit system;
           overlays = [
+            inputs.neorocks.overlays.default
+            inputs.gen-luarc.overlays.default
             (final: _: {
-              neovim-nightly = inputs.neovim.packages.${final.system}.neovim;
+              # neovim-nightly = inputs.neovim.packages.${final.system}.neovim;
             })
           ];
         };
@@ -74,7 +100,6 @@
               ]);
           in
             pkgs.mkShell {
-              name = "git-worktree-nvim";
               buildInputs = [
                 luaEnv
               ];
@@ -96,39 +121,65 @@
                 '';
             };
         in {
-          default = mkDevShell "jit";
-          luajit = mkDevShell "jit";
-          lua-51 = mkDevShell "5_1";
-          lua-52 = mkDevShell "5_2";
+          default = let
+          in
+            pkgs.mkShell {
+              name = "git-worktree-nvim-shell";
+              shellHook = ''
+                ${pre-commit-check.shellHook}
+                ln -fs ${pkgs.luarc-to-json luarc-nightly} .luarc.json
+              '';
+              buildInputs =
+                self.checks.${system}.pre-commit-check.enabledPackages
+                ++ (with pkgs; [
+                  lua-language-server
+                  busted-nlua
+                  (lua5_1.withPackages (ps:
+                    with ps; [
+                      luarocks
+                      plenary-nvim
+                    ]))
+                ]);
+            };
         };
 
-        packages.neodev-plugin = pkgs.vimUtils.buildVimPlugin {
-          name = "neodev.nvim";
-          src = inputs.neodev-nvim;
-        };
-        packages.plenary-plugin = pkgs.vimUtils.buildVimPlugin {
-          name = "plenary.nvim";
-          src = inputs.plenary-nvim;
-        };
-        packages.telescope-plugin = pkgs.vimUtils.buildVimPlugin {
-          name = "telescope.nvim";
-          src = inputs.telescope-nvim;
-        };
+        # packages.neodev-plugin = pkgs.vimUtils.buildVimPlugin {
+        #   name = "neodev.nvim";
+        #   src = inputs.neodev-nvim;
+        # };
+        # packages.plenary-plugin = pkgs.vimUtils.buildVimPlugin {
+        #   name = "plenary.nvim";
+        #   src = inputs.plenary-nvim;
+        # };
+        # packages.telescope-plugin = pkgs.vimUtils.buildVimPlugin {
+        #   name = "telescope.nvim";
+        #   src = inputs.telescope-nvim;
+        # };
 
-        checks = {
+        checks = let
+          type-check-stable = inputs.pre-commit-hooks.lib.${system}.run {
+            src = self;
+            hooks = {
+              lua-ls = {
+                enable = true;
+                settings.configuration = luarc-stable;
+              };
+            };
+          };
+
+          type-check-nightly = inputs.pre-commit-hooks.lib.${system}.run {
+            src = self;
+            hooks = {
+              lua-ls = {
+                enable = true;
+                settings.configuration = luarc-nightly;
+              };
+            };
+          };
+        in {
           inherit pre-commit-check;
-          type-check-stable = pkgs.callPackage ./nix/type-check.nix {
-            stable = true;
-            inherit (config.packages) neodev-plugin telescope-plugin;
-            inherit (inputs) pre-commit-hooks;
-            inherit self;
-          };
-          type-check-nightly = pkgs.callPackage ./nix/type-check.nix {
-            stable = false;
-            inherit (config.packages) neodev-plugin telescope-plugin;
-            inherit (inputs) pre-commit-hooks;
-            inherit self;
-          };
+          inherit type-check-stable;
+          inherit type-check-nightly;
         };
       };
     };

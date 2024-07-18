@@ -6,12 +6,12 @@ describe('config', function()
     local config = require('git-worktree.config')
 
     it('returns the default config', function()
-        assert.truthy(config.get().change_directory_command)
+        assert.truthy(config.change_directory_command)
     end)
 
     it('can have configuration applied', function()
-        config.set { change_directory_command = 'test' }
-        assert.equals(config.get().change_directory_command, 'test')
+        config.change_directory_command = 'test'
+        assert.equals(config.change_directory_command, 'test')
     end)
 
     it('No notifications at startup.', function()

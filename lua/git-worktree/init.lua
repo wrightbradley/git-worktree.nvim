@@ -1,10 +1,21 @@
-local Worktree = require('git-worktree.worktree')
+---@toc git-worktree.contents
+
+---@mod intro Introduction
+---@brief [[
+--- A plugin  that helps to use git worktree operations, create, switch, and delete in neovim.
+---@brief ]]
+---
+---@mod git-worktree
+
+---@brief [[
+---@brief ]]
 
 local M = {}
 
+local Worktree = require('git-worktree.worktree')
+
 --Switch the current worktree
 ---@param path string
--- luacheck:ignore self
 function M.switch_worktree(path)
     Worktree.switch(path)
 end
@@ -13,7 +24,6 @@ end
 ---@param path string
 ---@param branch string
 ---@param upstream? string
--- luacheck:ignore self
 function M.create_worktree(path, branch, upstream)
     Worktree.create(path, branch, upstream)
 end

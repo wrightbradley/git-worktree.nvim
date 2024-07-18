@@ -1,3 +1,5 @@
+---@mod git-worktree.hooks hooks
+
 local M = {}
 
 ---@enum git-worktree.hooks.type
@@ -14,13 +16,13 @@ local hooks = {
 }
 local count = 0
 
----@alias git-worktree.hooks.cb.create fun(bufnr: number)
----@alias git-worktree.hooks.cb.delete fun(bufnr: number)
----@alias git-worktree.hooks.cb.switch fun(tick: number, bufnr: number, row: number, line: string)
+---@alias git-worktree.hooks.cb.create fun(path: string, branch: string, upstream: string)
+---@alias git-worktree.hooks.cb.delete fun(path: string)
+---@alias git-worktree.hooks.cb.switch fun(path: string, prev_path: string)
 
 --- Registers a hook
 ---
---- Each hook type takes a callback a different function, and a configuration table
+--- Each hook type takes a callback a different function
 ---@param type git-worktree.hooks.type
 ---@param cb function
 ---@overload fun(type: 'CREATE', cb: git-worktree.hooks.cb.create): string
@@ -33,7 +35,8 @@ M.register = function(type, cb)
     return hook_id
 end
 
----@param type string
+--- Emits an event and calls all the hook callbacks registered
+---@param type git-worktree.hooks.type
 ---@param ... any
 function M.emit(type, ...)
     for _, hook in pairs(hooks[type]) do
@@ -49,9 +52,8 @@ local Path = require('plenary.path')
 ---
 --- <code>
 --- hooks.register(
----     hooks.type.SKIP_LINE,
----     hooks.builtin.skip_preproc_lines,
----     { bufnr = 0 }
+---     hooks.type.SWTICH,
+---     hooks.builtins.update_current_buffer_on_switch,
 --- )
 --- </code>
 M.builtins = {

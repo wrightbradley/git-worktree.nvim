@@ -143,6 +143,11 @@
             };
         };
 
+        packages = let
+          docgen = pkgs.callPackage ./nix/docgen.nix {};
+        in {
+          inherit docgen;
+        };
         # packages.neodev-plugin = pkgs.vimUtils.buildVimPlugin {
         #   name = "neodev.nvim";
         #   src = inputs.neodev-nvim;

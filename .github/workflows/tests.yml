@@ -1,5 +1,5 @@
 ---
-name: Run tests
+name: tests
 on:
   pull_request: ~
   push:

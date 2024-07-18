@@ -139,6 +139,7 @@
                       luarocks
                       plenary-nvim
                     ]))
+                  git-cliff
                 ]);
             };
         };
